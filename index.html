@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acid-Metal Reaction Virtual Lab</title>
+    
+    <!-- Static Tailwind CSS (v2.2.19) from cdnjs -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+
+    <style>
+        body {
+            background-color: transparent;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #334155;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .form-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            background-color: white;
+            color: #334155;
+            font-size: 0.875rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+        .form-input:disabled, .form-input[readonly] { background-color: #f3f4f6; color: #6b7280; }
+
+        /* Bubbling Animations */
+        .bubble { visibility: hidden; opacity: 0; fill: rgba(255, 255, 255, 0.8); }
+        .active-experiment .bubble { visibility: visible; }
+
+        .flask-bubble { animation: rise 1.2s infinite ease-in; }
+        .cylinder-bubble { animation: rise-tall 1.0s infinite ease-in; }
+
+        @keyframes rise {
+            0% { transform: translateY(0px) scale(0.5); opacity: 0; }
+            20% { opacity: 1; }
+            100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
+        }
+        @keyframes rise-tall {
+            0% { transform: translateY(0px) scale(0.5); opacity: 0; }
+            20% { opacity: 1; }
+            100% { transform: translateY(-160px) scale(1.5); opacity: 0; }
+        }
+
+        #cylinder-water, #gas-space { transition: all 2.5s ease-in-out; }
+
+        .d-1 { animation-delay: 0.1s; }
+        .d-2 { animation-delay: 0.3s; }
+        .d-3 { animation-delay: 0.6s; }
+        .d-4 { animation-delay: 0.9s; }
+        .d-5 { animation-delay: 1.2s; }
+        
+        .var-card { transition: all 0.2s ease; }
+        .var-card:hover { transform: translateY(-2px); border-color: #6366f1; }
+        
+        .progress-bar-fill { transition: width 2.5s linear; }
+
+        /* Mode toggle active state */
+        .mode-btn-active { background-color: white; color: #4f46e5; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); transform: scale(1.02); }
+        .mode-btn-inactive { color: #6b7280; background: transparent; }
+        .mode-btn-inactive:hover { color: #374151; background-color: rgba(255,255,255,0.5); }
+        
+        /* Hide number arrows for readonly inputs */
+        input[type=number].x-input::-webkit-inner-spin-button,
+        input[type=number].x-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .auto-fill-box { transition: all 0.3s ease; }
+        
+        /* QR Reader overrides */
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; border: none !important; }
+        #reader__dashboard_section_csr span { color: #6b7280; font-size: 14px; }
+        #reader__dashboard_section_swaplink { color: #4f46e5; text-decoration: none; font-weight: bold; }
+        #reader button { background: #4f46e5; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        #reader button:hover { background: #4338ca; }
+
+        /* Custom utility classes to replace Tailwind 3 JIT arbitrary values */
+        .text-\[9px\] { font-size: 9px; }
+        .text-\[10px\] { font-size: 10px; }
+        .text-\[11px\] { font-size: 11px; }
+        .text-\[11\.5px\] { font-size: 11.5px; }
+        .text-\[13px\] { font-size: 13px; }
+        .w-\[10\%\] { width: 10%; }
+        .w-\[30\%\] { width: 30%; }
+        .w-\[35\%\] { width: 35%; }
+        .w-\[45\%\] { width: 45%; }
+        .w-\[65\%\] { width: 65%; }
+        .w-\[70\%\] { width: 70%; }
+        .h-\[38px\] { height: 38px; }
+        .min-h-\[160px\] { min-height: 160px; }
+        .min-h-\[300px\] { min-height: 300px; }
+        .max-h-\[90vh\] { max-height: 90vh; }
+        .shadow-\[0_-4px_6px_-1px_rgba\(0\,0\,0\,0\.05\)\] { box-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05); }
+        .backdrop-blur-sm { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+        .scroll-smooth { scroll-behavior: smooth; }
+
+        button:disabled, input:disabled, select:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        input:disabled, select:disabled { background-color: #f3f4f6; color: #9ca3af; }
+    </style>
+</head>
+<body class="min-h-screen p-6 flex flex-col relative">
+
+    <!-- Header -->
+    <div class="max-w-7xl mx-auto w-full mb-4 mt-2 flex-shrink-0">
+        <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight text-center">Acid-Metal Reaction <span class="text-indigo-600">Virtual Lab</span></h1>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow" style="max-height: 80vh;">
+        
+        <!-- Left Panel: Control Column (Steps 1, 2, 3) -->
+        <div class="lg:col-span-5 flex flex-col gap-4 h-full">
+            
+            <!-- STEP 1: Select Mode Card -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-indigo-100 flex flex-col relative overflow-hidden flex-shrink-0">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-green-500"></div>
+                
+                <h2 class="text-xs font-black uppercase tracking-widest text-indigo-500 mb-3 flex items-center gap-2">
+                    <span class="bg-indigo-100 text-indigo-700 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">1</span>
+                    Step 1: Select Mode
+                </h2>
+                
+                <div class="w-full grid grid-cols-2 gap-2 bg-gray-100 p-1.5 rounded-xl relative shadow-inner">
+                    <button id="mode-btn-training" onclick="setMode('training')" class="mode-btn-active relative z-10 w-full py-2 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2">
+                        <span class="text-base">🏋️</span> Model Training
+                    </button>
+                    <button id="mode-btn-simulator" onclick="setMode('simulator')" class="mode-btn-inactive relative z-10 w-full py-2 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2">
+                        <span class="text-base">🖥️</span> Simulator
+                    </button>
+                </div>
+                <p id="mode-description" class="text-[11px] text-gray-500 mt-2.5 font-medium text-center leading-tight">Input your practical experiment data (X and Y) to train the linear regression model.</p>
+            </div>
+
+            <!-- STEPS 2 & 3: Variable & Data Entry Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col h-full overflow-hidden relative">
+                <div class="p-5 flex-grow overflow-y-auto space-y-5 scroll-smooth pb-24">
+                    
+                    <!-- STEP 2: Choose Variable -->
+                    <div>
+                        <div class="text-left mb-2 border-b border-gray-100 pb-2">
+                            <h2 class="text-sm font-black uppercase tracking-widest text-indigo-500 flex items-center gap-2">
+                                <span class="bg-indigo-100 text-indigo-700 w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
+                                Step 2: Choose Independent Variable
+                            </h2>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3" id="var-cards">
+                            <div onclick="selectVariable('concentration', this)" class="var-card border border-gray-200 bg-white rounded-xl p-3 cursor-pointer text-left group">
+                                <div class="icon-bg w-8 h-8 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                                </div>
+                                <h3 class="font-bold text-gray-800 text-[13px] mb-0.5">Concentration of Acid</h3>
+                                <p class="text-[10px] text-gray-500">Molarity (M)</p>
+                            </div>
+
+                            <div onclick="selectVariable('ph', this)" class="var-card border border-gray-200 bg-white rounded-xl p-3 cursor-pointer text-left group">
+                                <div class="icon-bg w-8 h-8 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                </div>
+                                <h3 class="font-bold text-gray-800 text-[13px] mb-0.5">pH Value of Acid</h3>
+                                <p class="text-[10px] text-gray-500">Acidity level (pH)</p>
+                            </div>
+
+                            <div onclick="selectVariable('acidType', this)" class="var-card border border-gray-200 bg-white rounded-xl p-3 cursor-pointer text-left group">
+                                <div class="icon-bg w-8 h-8 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 10h16M4 14h16m-8-8v12"></path></svg>
+                                </div>
+                                <h3 class="font-bold text-gray-800 text-[13px] mb-0.5">Type of Acid</h3>
+                                <p class="text-[10px] text-gray-500">Name & Basicity</p>
+                            </div>
+
+                            <div onclick="selectVariable('temperature', this)" class="var-card border border-gray-200 bg-white rounded-xl p-3 cursor-pointer text-left group">
+                                <div class="icon-bg w-8 h-8 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                </div>
+                                <h3 class="font-bold text-gray-800 text-[13px] mb-0.5">Temperature</h3>
+                                <p class="text-[10px] text-gray-500">Heat of setup (°C)</p>
+                            </div>
+
+                            <div onclick="selectVariable('surfaceArea', this)" class="var-card border border-gray-200 bg-white rounded-xl p-3 cursor-pointer text-left group">
+                                <div class="icon-bg w-8 h-8 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                                </div>
+                                <h3 class="font-bold text-gray-800 text-[13px] mb-0.5">Surface Area of Metal</h3>
+                                <p class="text-[10px] text-gray-500">Division Portions</p>
+                            </div>
+
+                            <div onclick="selectVariable('metalType', this)" class="var-card border border-gray-200 bg-white rounded-xl p-3 cursor-pointer text-left group">
+                                <div class="icon-bg w-8 h-8 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                                </div>
+                                <h3 class="font-bold text-gray-800 text-[13px] mb-0.5">Type of Metal</h3>
+                                <p class="text-[10px] text-gray-500">Name & Reactivity</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: Enter Data -->
+                    <div>
+                        <div class="mb-3 border-b border-gray-100 pb-2 flex justify-between items-center">
+                            <h2 class="text-sm font-black uppercase tracking-widest text-indigo-500 flex items-center gap-2">
+                                <span class="bg-indigo-100 text-indigo-700 w-5 h-5 rounded-full flex items-center justify-center text-[10px] shrink-0">3</span>
+                                <span id="data-entry-title">Step 3: Enter Data</span>
+                            </h2>
+                            
+                            <div class="flex gap-2 shrink-0">
+                                <button onclick="openScanModal()" class="bg-white border border-gray-200 text-gray-600 hover:text-indigo-600 hover:border-indigo-200 hover:bg-gray-50 font-bold py-1.5 px-2 rounded-lg shadow-sm transition-all flex items-center gap-1 text-[10px] uppercase tracking-wide">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                                    Scan
+                                </button>
+                                <button onclick="openQRModal()" class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-100 font-bold py-1.5 px-2 rounded-lg shadow-sm transition-all flex items-center gap-1 text-[10px] uppercase tracking-wide">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                                    Share
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="custom-input-container" class="opacity-30 pointer-events-none transition-all duration-300">
+                            <div class="flex gap-2 mb-1 pl-1 pr-1">
+                                <div class="w-1/2 text-[10px] font-bold text-gray-500 uppercase flex items-center justify-between">
+                                    Indep. Var (X) <span id="x-unit-label" class="bg-gray-200 text-gray-600 px-1 rounded">-</span>
+                                </div>
+                                <div class="w-1/2 text-[10px] font-bold text-green-600 uppercase flex items-center justify-between">
+                                    Gas Volume (Y) <span class="bg-green-100 text-green-700 px-1 rounded">cm³</span>
+                                </div>
+                            </div>
+
+                            <div id="data-rows" class="space-y-2">
+                                <!-- Rows injected via JS -->
+                            </div>
+                            
+                            <div class="flex gap-2 mt-4">
+                                <button onclick="addDataRow()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                    Add Row
+                                </button>
+                                <button onclick="clearAllData()" class="flex-1 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Button Fixed at Bottom -->
+                <div class="p-4 border-t border-gray-200 bg-gray-50 absolute bottom-0 left-0 right-0 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                    <!-- Hidden Progress Bar (For Simulator Mode) -->
+                    <div id="progress-container" class="w-full bg-gray-200 rounded-full h-1.5 mb-2 hidden">
+                        <div id="progress-bar" class="bg-indigo-600 h-1.5 rounded-full progress-bar-fill w-0"></div>
+                    </div>
+
+                    <button id="run-btn" onclick="executeAction()" disabled class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                        <span id="run-btn-text">Start Training the Model</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Model Results & Prediction -->
+        <div class="lg:col-span-7 flex flex-col gap-4 h-full" id="right-panel-container">
+            
+            <!-- Graph / Lab Area -->
+            <div id="graph-container" class="bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-2/3 transition-all duration-300">
+                <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-indigo-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        <h2 class="text-base font-bold">Visualization & Lab Feed</h2>
+                    </div>
+                    
+                    <button id="download-png-btn" onclick="downloadGraph()" class="hidden modal-btn bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-1.5 px-3 rounded-lg transition-colors flex items-center gap-1 border border-gray-300">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        Download PNG
+                    </button>
+                </div>
+
+                <div class="p-4 flex-grow flex flex-col relative overflow-y-auto">
+                    
+                    <!-- Lab Animation -->
+                    <div id="animation-container" class="bg-gray-800 rounded-xl shadow-inner relative flex justify-center items-center mb-3 overflow-hidden h-36 flex-shrink-0 transition-all">
+                        
+                        <svg id="lab-setup" width="300" height="130" viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Trough -->
+                            <path d="M 220 180 L 220 280 L 480 280 L 480 180" fill="none" stroke="#64748b" stroke-width="4"/>
+                            <path d="M 222 200 L 478 200 L 478 278 L 222 278 Z" fill="rgba(56, 184, 248, 0.4)"/>
+                            
+                            <!-- Cylinder Structure -->
+                            <rect x="290" y="40" width="40" height="20" fill="rgba(255,255,255,0.8)" id="gas-space" />
+                            <rect x="290" y="60" width="40" height="200" fill="rgba(56, 184, 248, 0.6)" id="cylinder-water" />
+                            <path d="M 290 260 L 290 40 L 330 40 L 330 260" fill="none" stroke="#cbd5e1" stroke-width="3"/>
+                            <rect x="280" y="30" width="60" height="10" rx="2" fill="#cbd5e1"/>
+                            
+                            <!-- Measurement Marks -->
+                            <line x1="330" y1="60" x2="340" y2="60" stroke="#94a3b8" stroke-width="2"/><text x="345" y="64" fill="#94a3b8" font-size="12" font-weight="bold">0</text>
+                            <line x1="330" y1="100" x2="340" y2="100" stroke="#94a3b8" stroke-width="2"/><text x="345" y="104" fill="#94a3b8" font-size="12" font-weight="bold">20</text>
+                            <line x1="330" y1="140" x2="340" y2="140" stroke="#94a3b8" stroke-width="2"/><text x="345" y="144" fill="#94a3b8" font-size="12" font-weight="bold">40</text>
+                            <line x1="330" y1="180" x2="340" y2="180" stroke="#94a3b8" stroke-width="2"/><text x="345" y="184" fill="#94a3b8" font-size="12" font-weight="bold">60</text>
+                            <line x1="330" y1="220" x2="340" y2="220" stroke="#94a3b8" stroke-width="2"/><text x="345" y="224" fill="#94a3b8" font-size="12" font-weight="bold">80</text>
+                            <line x1="330" y1="260" x2="340" y2="260" stroke="#94a3b8" stroke-width="2"/><text x="345" y="264" fill="#94a3b8" font-size="12" font-weight="bold">100</text>
+                            
+                            <!-- Flask -->
+                            <path d="M 120 120 L 140 120 L 140 160 L 90 260 L 170 260 L 120 160 Z" fill="none" stroke="#cbd5e1" stroke-width="3"/>
+                            <path d="M 100 240 L 160 240 L 170 260 L 90 260 Z" fill="rgba(56, 184, 248, 0.3)"/>
+                            <path d="M 110 255 L 150 245" stroke="#64748b" stroke-width="6" stroke-linecap="round"/>
+                            <rect x="115" y="105" width="30" height="20" fill="#475569"/>
+                            
+                            <!-- Delivery Tube -->
+                            <path d="M 130 110 L 130 80 L 230 80 L 280 270 L 310 265" fill="none" stroke="#f1f5f9" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+                            <path d="M 130 110 L 130 80 L 230 80 L 280 270 L 310 265" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                            
+                            <!-- Bubbles -->
+                            <g id="flask-bubbles">
+                                <circle cx="130" cy="250" r="3" class="bubble flask-bubble d-1" />
+                                <circle cx="120" cy="245" r="4" class="bubble flask-bubble d-2" />
+                                <circle cx="140" cy="255" r="2" class="bubble flask-bubble d-3" />
+                                <circle cx="125" cy="250" r="5" class="bubble flask-bubble d-4" />
+                                <circle cx="135" cy="240" r="3" class="bubble flask-bubble d-5" />
+                            </g>
+                            <g id="cylinder-bubbles">
+                                <circle cx="310" cy="255" r="4" class="bubble cylinder-bubble d-1" />
+                                <circle cx="315" cy="260" r="5" class="bubble cylinder-bubble d-3" />
+                                <circle cx="305" cy="250" r="3" class="bubble cylinder-bubble d-5" />
+                            </g>
+                        </svg>
+
+                        <div id="setup-overlay" class="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 transition-opacity backdrop-blur-sm">
+                            <span id="overlay-text" class="text-white text-xs font-semibold tracking-wide">Experiment visualization will appear here</span>
+                        </div>
+                    </div>
+
+                    <!-- Chart Area -->
+                    <div class="flex-grow relative w-full min-h-[160px] mt-1 bg-white rounded-xl">
+                        <canvas id="resultsChart" class="w-full h-full hidden rounded-xl"></canvas>
+                        
+                        <div id="chart-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl">
+                            <svg class="w-10 h-10 mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                            <p class="text-[13px] font-medium" id="chart-hint-text">Record data to train model</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prediction Interface (For Training Mode only) -->
+            <div id="prediction-panel" class="bg-indigo-600 rounded-2xl shadow-lg border border-indigo-700 flex flex-col overflow-hidden h-1/3 opacity-0 pointer-events-none transition-all duration-300 transform translate-y-4 flex-shrink-0">
+                <div class="p-3 border-b border-indigo-500 border-opacity-50 flex items-center bg-indigo-700">
+                    <div class="flex items-center gap-2 text-white">
+                        <svg class="w-5 h-5 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <h2 class="text-base font-bold">Prediction by the model</h2>
+                    </div>
+                </div>
+                <div class="p-4 flex items-center gap-4 text-white h-full">
+                    <div id="predict-input-container" class="flex-1"></div>
+                    <div class="pt-4">
+                        <button id="predict-btn" onclick="runPrediction()" class="modal-btn bg-green-400 hover:bg-green-500 text-green-900 font-bold py-2 px-4 rounded-lg shadow transition-transform transform hover:scale-105 flex items-center justify-center w-28 text-sm">
+                            Predict Y
+                        </button>
+                    </div>
+                    <div class="flex-1 border-l border-indigo-500 pl-4">
+                        <label class="block text-[11px] font-semibold text-indigo-200 mb-1">Predicted Volume:</label>
+                        <div class="text-2xl font-black text-green-300" id="predict-result">
+                            -- <span class="text-xs font-bold">cm³</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modals Overlay -->
+    
+    <!-- 1. Generate QR Code Modal -->
+    <div id="qr-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col items-center relative">
+            <button onclick="closeQRModal()" class="modal-btn absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-1 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-4">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+            </div>
+            <h2 class="text-xl font-extrabold text-gray-800 mb-1">Share Data</h2>
+            <p class="text-xs text-gray-500 mb-5 text-center px-4">Let your lab partner scan this QR code to automatically import your setup and data.</p>
+            <div class="bg-white border-4 border-indigo-50 p-4 rounded-xl shadow-inner mb-4 flex justify-center items-center">
+                <div id="qr-code-container"></div>
+            </div>
+            <button onclick="closeQRModal()" class="modal-btn w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg transition-colors text-sm mt-2">Done</button>
+        </div>
+    </div>
+
+    <!-- 2. Scan QR Code Modal -->
+    <div id="scan-modal" class="fixed inset-0 bg-gray-900 bg-opacity-80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md flex flex-col relative">
+            <button onclick="closeScanModal()" class="modal-btn absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-1 transition-colors z-10">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="text-center mb-4">
+                <h2 class="text-xl font-extrabold text-gray-800 mb-1">Scan QR Code</h2>
+                <p class="text-xs text-gray-500">Align the QR code within the frame to import data.</p>
+            </div>
+            <div id="reader" class="w-full bg-gray-100 min-h-[300px] flex items-center justify-center relative shadow-inner"></div>
+            <div class="mt-4 border-t border-gray-100 pt-4">
+                <p class="text-[10px] text-gray-400 text-center">Make sure you allow camera permissions in your browser.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Setup Process / Data Transfer Modal -->
+    <div id="data-prep-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg flex flex-col relative max-h-[90vh] overflow-y-auto">
+            
+            <button onclick="closeDataPrepModal()" class="modal-btn absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full p-1.5 transition-colors z-10">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+
+            <div class="flex items-center gap-3 mb-4 border-b border-gray-100 pb-3 pr-8">
+                <div class="bg-blue-100 text-blue-600 p-2 rounded-full">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                </div>
+                <h2 id="modal-main-title" class="text-xl font-extrabold text-gray-800">Data Transfer Process</h2>
+            </div>
+            
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-3 text-sm text-blue-800 mb-4 rounded-r-lg">
+                <p id="modal-sub-title" class="font-bold mb-1 text-blue-900">Data Normalization</p>
+                <p id="modal-desc" class="text-xs">The system is compiling your independent (X) and dependent (Y) variables into numerical arrays required for the linear regression training algorithm...</p>
+            </div>
+
+            <!-- Controlled Variables Section -->
+            <div class="flex items-center justify-between mb-2 px-1">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    <p class="text-sm font-bold text-gray-700">Controlled Variables (Constants):</p>
+                </div>
+            </div>
+            <div id="controlled-vars-list" class="grid grid-cols-2 gap-2 mb-4 p-2 bg-gray-50 border border-gray-100 rounded-xl shadow-inner text-xs">
+                <!-- Injected via JS -->
+            </div>
+            
+            <!-- Extracted Variables Section -->
+            <div class="flex items-center gap-2 mb-2 px-1">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                <p class="text-sm font-bold text-gray-700">Experimental Data Extracted:</p>
+            </div>
+            
+            <div id="data-prep-list" class="max-h-40 overflow-y-auto space-y-2 mb-6 p-2 bg-gray-50 border border-gray-100 rounded-xl shadow-inner">
+                <!-- Injected via JS -->
+            </div>
+            
+            <div class="text-center mb-4">
+                <p id="modal-complete-text" class="text-xs font-bold text-gray-500">Data transfer complete! Click to start training.</p>
+            </div>
+            <button id="modal-action-btn" onclick="handleModalAction()" class="modal-btn w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition-colors shadow-sm transform hover:-translate-y-0.5">Start Training</button>
+        </div>
+    </div>
+
+    <!-- 4. Model Training Process Modal -->
+    <div id="model-training-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg flex flex-col relative transition-all">
+            <div class="flex items-center gap-3 mb-6 border-b border-gray-100 pb-3">
+                <div id="training-spinner-container" class="bg-indigo-100 text-indigo-600 p-2 rounded-full">
+                    <svg id="training-spinner" class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                </div>
+                <h2 id="training-title" class="text-xl font-extrabold text-gray-800">Training Model...</h2>
+            </div>
+
+            <div id="training-content" class="mb-2">
+                <p class="text-xs text-gray-500 mb-4">The model is learning the relationship between the variables. Please wait...</p>
+                
+                <div class="flex justify-between items-end mb-1">
+                    <div class="bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded shadow-sm" id="train-progress-text">0%</div>
+                    <div class="bg-green-50 text-green-700 text-xs font-bold px-2 py-1 rounded border border-green-100">
+                        Loss: <span id="train-loss" class="font-mono">--</span>
+                    </div>
+                </div>
+                
+                <div class="w-full bg-gray-100 rounded-full h-2.5 mb-6 overflow-hidden shadow-inner border border-gray-200">
+                    <div id="train-progress-bar" class="bg-gradient-to-r from-indigo-500 to-green-400 h-2.5 rounded-full transition-all duration-75" style="width: 0%"></div>
+                </div>
+
+                <div class="flex justify-between text-xs text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100 shadow-inner">
+                    <div class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Elapsed: <span id="train-elapsed" class="font-mono font-bold text-gray-700">0.0s</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Remaining: <span id="train-remain" class="font-mono font-bold text-gray-700">--s</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Plugins for the Graph
+        const customCanvasBackgroundColor = {
+            id: 'customCanvasBackgroundColor',
+            beforeDraw: (chart, args, options) => {
+                const {ctx} = chart;
+                ctx.save();
+                ctx.globalCompositeOperation = 'destination-over';
+                ctx.fillStyle = options.color || '#ffffff';
+                ctx.fillRect(0, 0, chart.width, chart.height);
+                ctx.restore();
+            }
+        };
+
+        const customPointLabels = {
+            id: 'customPointLabels',
+            afterDatasetsDraw(chart) {
+                const { ctx, data } = chart;
+                ctx.save();
+                ctx.font = '600 11px system-ui, -apple-system, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+
+                data.datasets.forEach((dataset, i) => {
+                    if (dataset.type === 'line' && dataset.label === 'Trained Regression Model') return;
+                    
+                    const meta = chart.getDatasetMeta(i);
+                    meta.data.forEach((datapoint, index) => {
+                        const pointData = dataset.data[index];
+                        if (pointData && pointData.ptLabel) {
+                            ctx.fillStyle = dataset.label === 'Predicted Point' ? '#ef4444' : '#6b7280';
+                            ctx.fillText(`(${pointData.ptLabel})`, datapoint.x, datapoint.y - 12);
+                        }
+                    });
+                });
+                ctx.restore();
+            }
+        };
+
+        const expData = {
+            concentration: { inputType: 'number', name: "Concentration of Acid", unit: "M", xPlaceholder: "e.g., 1.0", defaultVal: 1.0, calcY: (x) => Math.min(100, Math.max(0, 45 * x + 5)) },
+            ph: { inputType: 'number', name: "pH Value of Acid", unit: "pH", xPlaceholder: "e.g., 1", defaultVal: 1.0, calcY: (x) => Math.min(100, Math.max(0, 100 - 30 * x)) },
+            acidType: { inputType: 'acid', name: "Type of Acid", unit: "H+", xPlaceholder: "Type Acid...", defaultVal: "Hydrochloric Acid", calcY: (x) => Math.min(100, Math.max(0, 30 * x)) },
+            temperature: { inputType: 'number', name: "Temperature", unit: "°C", xPlaceholder: "e.g., 30", defaultVal: 25.0, calcY: (x) => Math.min(100, Math.max(0, 1.6 * x + 5)) },
+            surfaceArea: { inputType: 'surfaceSelect', name: "Surface Area of Metal", unit: "Portions", xPlaceholder: "Choose Portion", defaultVal: 1, calcY: (x) => Math.min(100, Math.max(0, 3 * x + 20)) },
+            metalType: { inputType: 'metal', name: "Type of Metal", unit: "Idx", xPlaceholder: "Type Metal...", defaultVal: "Zinc", calcY: (x) => Math.min(100, Math.max(0, 1.0 * x + 5)) }
+        };
+
+        let currentMode = 'training';
+        let currentVar = null;
+        let chartInstance = null;
+        let trainedModel = { m: 0, c: 0 };
+        let html5QrcodeScanner = null;
+        let pendingTrainingPoints = [];
+
+        // --- MODE SWITCHING & SELECTION ---
+        function setMode(mode) {
+            currentMode = mode;
+            const btnTrain = document.getElementById('mode-btn-training');
+            const btnSim = document.getElementById('mode-btn-simulator');
+            const desc = document.getElementById('mode-description');
+            
+            if(mode === 'training') {
+                btnTrain.className = "mode-btn-active relative z-10 w-full py-2 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2";
+                btnSim.className = "mode-btn-inactive relative z-10 w-full py-2 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2";
+                desc.innerText = "Input your practical experiment data (X and Y) to train the linear regression model.";
+                document.getElementById('data-entry-title').innerText = "Step 3: Enter Data (X & Y)";
+                document.getElementById('run-btn-text').innerText = "Start Training the Model";
+                document.getElementById('graph-container').classList.replace('h-full', 'h-2/3');
+                document.getElementById('prediction-panel').style.display = 'flex';
+            } else {
+                btnSim.className = "mode-btn-active relative z-10 w-full py-2 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2";
+                btnTrain.className = "mode-btn-inactive relative z-10 w-full py-2 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2";
+                desc.innerText = "Input Independent Variables (X). The internal model will automatically simulate and predict the gas volume (Y).";
+                document.getElementById('data-entry-title').innerText = "Step 3: Enter Data (X only)";
+                document.getElementById('run-btn-text').innerText = "Simulate & Predict Data";
+                document.getElementById('graph-container').classList.replace('h-2/3', 'h-full');
+                document.getElementById('prediction-panel').style.display = 'none';
+            }
+
+            if(currentVar) {
+                const activeCard = document.querySelector('.var-card.ring-indigo-500');
+                if(activeCard) selectVariable(currentVar, activeCard);
+            }
+        }
+
+        function selectVariable(varKey, cardElement) {
+            currentVar = varKey;
+            document.querySelectorAll('.var-card').forEach(card => {
+                card.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'bg-opacity-30', 'border-indigo-500');
+                card.classList.add('border-gray-200', 'bg-white');
+                const iconBg = card.querySelector('.icon-bg');
+                iconBg.classList.remove('bg-indigo-600', 'text-white');
+                iconBg.classList.add('bg-indigo-50', 'text-indigo-500');
+            });
+            
+            cardElement.classList.remove('border-gray-200', 'bg-white');
+            cardElement.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'bg-opacity-30', 'border-indigo-500');
+            const iconBg = cardElement.querySelector('.icon-bg');
+            iconBg.classList.remove('bg-indigo-50', 'text-indigo-500');
+            iconBg.classList.add('bg-indigo-600', 'text-white');
+
+            const setupInfo = expData[currentVar];
+            document.getElementById('x-unit-label').innerText = setupInfo.unit;
+            
+            const predictContainer = document.getElementById('predict-input-container');
+            if (setupInfo.inputType === 'acid' || setupInfo.inputType === 'metal') {
+                const pName = setupInfo.inputType === 'acid' ? 'Type Acid Name...' : 'Type Metal Name...';
+                const pUnit = setupInfo.inputType === 'acid' ? 'H+' : 'Idx';
+                predictContainer.innerHTML = `
+                    <label class="block text-[11px] font-semibold text-indigo-200 mb-1">Enter ${setupInfo.name}:</label>
+                    <div class="flex overflow-hidden rounded-lg border border-indigo-400 focus-within:ring-2 focus-within:ring-white transition-all shadow-inner bg-indigo-500 p-0.5">
+                        <input type="text" id="predict-name-input" class="w-[70%] bg-transparent py-2 px-3 text-white placeholder-indigo-300 outline-none text-sm" placeholder="${pName}" oninput="attemptAutoFill(this, '${setupInfo.inputType}')">
+                        <div class="x-auto-box w-[30%] flex items-center justify-center bg-indigo-600 bg-opacity-80 rounded-md transition-colors duration-300">
+                            <input type="number" id="predict-input" class="w-full bg-transparent text-center text-indigo-100 font-bold outline-none cursor-not-allowed text-sm" placeholder="${pUnit}" readonly>
+                        </div>
+                    </div>`;
+            } else if (setupInfo.inputType === 'surfaceSelect') {
+                let options = '<option value="" disabled selected>Select portion...</option>';
+                for(let i=1; i<=20; i++) options += `<option value="${i}" class="text-gray-800">2cm³ metal in ${i} portion${i>1?'s':''}</option>`;
+                predictContainer.innerHTML = `
+                    <label class="block text-[11px] font-semibold text-indigo-200 mb-1">Select ${setupInfo.name}:</label>
+                    <select id="predict-input" class="w-full bg-indigo-500 border border-indigo-400 rounded-lg py-2 px-3 text-white outline-none focus:ring-2 focus:ring-white shadow-inner appearance-none cursor-pointer">${options}</select>`;
+            } else {
+                predictContainer.innerHTML = `
+                    <label class="block text-[11px] font-semibold text-indigo-200 mb-1">Enter ${setupInfo.name} (${setupInfo.unit}):</label>
+                    <input type="number" id="predict-input" class="w-full bg-indigo-500 border border-indigo-400 rounded-lg py-2 px-3 text-white placeholder-indigo-300 outline-none focus:ring-2 focus:ring-white shadow-inner" placeholder="Numeric value...">`;
+            }
+
+            document.getElementById('custom-input-container').classList.remove('opacity-30', 'pointer-events-none');
+            const predPanel = document.getElementById('prediction-panel');
+            if(currentMode === 'training') predPanel.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            document.getElementById('predict-result').innerHTML = `-- <span class="text-sm font-bold">cm³</span>`;
+            document.getElementById('download-png-btn').classList.add('hidden');
+            
+            // Update Placeholder Texts
+            document.getElementById('overlay-text').innerText = "Experiment visualization will appear here";
+            document.getElementById('chart-hint-text').innerText = currentMode === 'training' ? "Record data to train model" : "Enter X values to simulate";
+            
+            clearAllData();
+            document.getElementById('setup-overlay').classList.remove('hidden');
+            document.getElementById('chart-placeholder').classList.remove('hidden');
+            document.getElementById('resultsChart').classList.add('hidden');
+            resetLabVisual();
+            if (chartInstance) chartInstance.destroy();
+            checkInputs();
+        }
+
+        // --- SMART DICTIONARY & ROW MANAGEMENT ---
+        function attemptAutoFill(inputEl, type) {
+            const val = inputEl.value.toLowerCase().trim();
+            const boxContainer = inputEl.nextElementSibling;
+            const numberInput = boxContainer.querySelector('input') || document.getElementById('predict-input');
+            const isPrediction = numberInput.id === 'predict-input';
+            
+            if(!val) {
+                numberInput.value = '';
+                if(!isPrediction) { boxContainer.classList.remove('bg-green-100', 'border-green-300'); boxContainer.classList.add('bg-gray-50', 'border-gray-200'); numberInput.classList.remove('text-green-700'); numberInput.classList.add('text-indigo-500'); }
+                else { boxContainer.classList.remove('bg-green-500'); boxContainer.classList.add('bg-indigo-600', 'bg-opacity-80'); }
+                if(!isPrediction) checkInputs();
+                return;
+            }
+
+            let foundVal = '';
+            let dict = type === 'metal'
+                ? { "potassium":100, "k":100, "sodium":95, "na":95, "calcium":90, "ca":90, "magnesium":80, "mg":80, "aluminum":70, "al":70, "zinc":60, "zn":60, "iron":50, "fe":50, "tin":40, "sn":40, "lead":30, "pb":30, "copper":10, "cu":10, "silver":5, "ag":5, "gold":1, "au":1 }
+                : { "hydrochloric":1, "hcl":1, "nitric":1, "hno3":1, "sulfuric":2, "h2so4":2, "carbonic":2, "h2co3":2, "phosphoric":3, "h3po4":3, "ethanoic":1, "acetic":1, "citric":3 };
+
+            for (const [key, num] of Object.entries(dict)) { if (key === val) { foundVal = num; break; } }
+            if (foundVal === '' && val.length >= 2) { for (const [key, num] of Object.entries(dict)) { if (key.startsWith(val)) { foundVal = num; break; } } }
+            
+            if (foundVal !== '') {
+                numberInput.value = foundVal;
+                if(!isPrediction) { boxContainer.classList.add('bg-green-100', 'border-green-300'); boxContainer.classList.remove('bg-gray-50', 'border-gray-200'); numberInput.classList.add('text-green-700'); numberInput.classList.remove('text-indigo-500'); }
+                else { boxContainer.classList.add('bg-green-500'); boxContainer.classList.remove('bg-indigo-600', 'bg-opacity-80'); }
+            } else {
+                numberInput.value = '';
+                if(!isPrediction) { boxContainer.classList.remove('bg-green-100', 'border-green-300'); boxContainer.classList.add('bg-gray-50', 'border-gray-200'); numberInput.classList.remove('text-green-700'); numberInput.classList.add('text-indigo-500'); }
+                else { boxContainer.classList.remove('bg-green-500'); boxContainer.classList.add('bg-indigo-600', 'bg-opacity-80'); }
+            }
+            if(!isPrediction) checkInputs();
+        }
+
+        function addDataRow() {
+            if (!currentVar) return;
+            const setupInfo = expData[currentVar];
+            const container = document.getElementById('data-rows');
+            const row = document.createElement('div');
+            row.className = 'flex gap-2 data-row items-center';
+            
+            let xInputHTML = "";
+            if (setupInfo.inputType === 'surfaceSelect') {
+                let options = '<option value="" disabled selected>Select portion...</option>';
+                for(let i=1; i<=20; i++) options += `<option value="${i}">2cm³ metal in ${i} portion${i>1?'s':''}</option>`;
+                xInputHTML = `<select class="x-input form-input w-1/2 font-medium text-[11.5px] h-[38px] px-1 py-0 cursor-pointer" onchange="checkInputs()">${options}</select>`;
+            } else if (setupInfo.inputType === 'acid' || setupInfo.inputType === 'metal') {
+                xInputHTML = `
+                    <div class="w-1/2 flex border border-gray-200 rounded-md overflow-hidden bg-white focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-400 transition-all h-[38px]">
+                        <input type="text" class="x-name w-[65%] px-2 py-1 text-[13px] outline-none text-gray-700" placeholder="${setupInfo.inputType === 'acid' ? 'Type Acid...' : 'Type Metal...'}" oninput="attemptAutoFill(this, '${setupInfo.inputType}')">
+                        <div class="x-auto-box w-[35%] border-l border-gray-200 bg-gray-50 flex items-center justify-center shadow-inner auto-fill-box">
+                            <input type="number" class="x-input w-full bg-transparent text-center text-[13px] font-bold text-indigo-500 outline-none cursor-not-allowed transition-colors" placeholder="${setupInfo.inputType === 'acid' ? 'Auto H+' : 'Auto Idx'}" readonly>
+                        </div>
+                    </div>`;
+            } else {
+                xInputHTML = `<input type="number" step="any" class="x-input form-input w-1/2 font-medium h-[38px]" placeholder="${setupInfo.xPlaceholder}" oninput="checkInputs()">`;
+            }
+
+            const yInputHTML = currentMode === 'training'
+                ? `<input type="number" step="any" class="y-input form-input w-1/2 border-green-200 focus:border-green-500 font-bold text-green-700 h-[38px]" placeholder="Vol (Y)" oninput="checkInputs()">`
+                : `<input type="text" class="y-input form-input w-1/2 font-bold text-green-700 bg-green-50 h-[38px]" placeholder="Auto-predicted" readonly>`;
+
+            row.innerHTML = xInputHTML + yInputHTML;
+            container.appendChild(row);
+            checkInputs();
+        }
+
+        function clearAllData() {
+            document.getElementById('data-rows').innerHTML = '';
+            addDataRow(); addDataRow(); addDataRow();
+            checkInputs(); resetLabVisual();
+        }
+
+        function checkInputs() {
+            let validPoints = 0;
+            document.querySelectorAll('.data-row').forEach(row => {
+                const xInput = row.querySelector('.x-input');
+                const xVal = xInput ? xInput.value.trim() : "";
+                if(currentMode === 'training') {
+                    const yVal = row.querySelector('.y-input').value.trim();
+                    if (xVal !== "" && yVal !== "") validPoints++;
+                } else {
+                    if (xVal !== "") validPoints++;
+                }
+            });
+
+            const btn = document.getElementById('run-btn');
+            if(currentMode === 'training' && validPoints >= 2) {
+                btn.disabled = false; document.getElementById('run-btn-text').innerText = "Start Training the Model";
+            } else if (currentMode === 'simulator' && validPoints >= 1) {
+                btn.disabled = false; document.getElementById('run-btn-text').innerText = "Simulate & Predict Y";
+            } else {
+                btn.disabled = true; document.getElementById('run-btn-text').innerText = currentMode === 'training' ? "Require ≥2 points to train..." : "Require ≥1 point to simulate...";
+            }
+        }
+
+        function lockUIBackground(locked) {
+            document.getElementById('run-btn').disabled = locked;
+            document.querySelectorAll('#data-rows input:not([readonly]), #data-rows select').forEach(i => i.disabled = locked);
+            document.querySelectorAll('#custom-input-container button').forEach(b => b.disabled = locked);
+            document.querySelectorAll('.var-card').forEach(c => c.style.pointerEvents = locked ? 'none' : 'auto');
+        }
+
+        // --- MATH / REGRESSION ---
+        function calculateLinearRegression(dataPoints) {
+            const n = dataPoints.length; let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+            dataPoints.forEach(p => { sumX += p.x; sumY += p.y; sumXY += p.x * p.y; sumXX += p.x * p.x; });
+            const denominator = (n * sumXX - sumX * sumX);
+            if (denominator === 0) return { m: 0, c: sumY / n };
+            
+            const m = (n * sumXY - sumX * sumY) / denominator;
+            const c = (sumY - m * sumX) / n;
+            return { m, c };
+        }
+
+        // --- MUTUAL EXCLUSION LOGIC (Concentration vs pH) ---
+        function togglePhConc(element, type) {
+            const concInput = document.getElementById('ctrl-var-concentration');
+            const phInput = document.getElementById('ctrl-var-ph');
+            if (!concInput || !phInput) return;
+
+            if (type === 'concentration') {
+                if (element.value !== '') {
+                    phInput.disabled = true;
+                    phInput.value = '';
+                } else {
+                    phInput.disabled = false;
+                }
+            } else if (type === 'ph') {
+                if (element.value !== '') {
+                    concInput.disabled = true;
+                    concInput.value = '';
+                } else {
+                    concInput.disabled = false;
+                }
+            }
+        }
+
+        // --- EXECUTION LOGIC (MODALS INCLUDED) ---
+        function executeAction() {
+            showSetupModal();
+        }
+
+        function handleModalAction() {
+            if (currentMode === 'training') {
+                startActualTraining();
+            } else {
+                document.getElementById('data-prep-modal').classList.add('hidden');
+                runSimulator();
+            }
+        }
+
+        // 1. Prepare Data & Show Data Transfer Modal with Editable Constants
+        function showSetupModal() {
+            if (!currentVar) return;
+            pendingTrainingPoints = [];
+            const setupInfo = expData[currentVar];
+            let validPoints = 0;
+            
+            // Populate Extracted Data
+            const listContainer = document.getElementById('data-prep-list');
+            listContainer.innerHTML = '';
+            
+            document.querySelectorAll('.data-row').forEach(row => {
+                const xInput = row.querySelector('.x-input');
+                const xNameInput = row.querySelector('.x-name');
+                const yInput = row.querySelector('.y-input');
+                if (!xInput) return;
+
+                const xVal = parseFloat(xInput.value.trim());
+
+                // Prepare Label if exists
+                let ptLabel = null;
+                if (setupInfo.inputType === 'acid' || setupInfo.inputType === 'metal') {
+                    ptLabel = xNameInput && xNameInput.value.trim() !== '' ? xNameInput.value.trim() : null;
+                }
+
+                if (currentMode === 'training') {
+                    if (!yInput) return;
+                    const yVal = parseFloat(yInput.value.trim());
+                    if (!isNaN(xVal) && !isNaN(yVal)) {
+                        pendingTrainingPoints.push({x: xVal, y: yVal, ptLabel: ptLabel});
+                        addExtractedRowHTML(listContainer, xVal, xNameInput, setupInfo, yVal);
+                        validPoints++;
+                    }
+                } else {
+                    if (!isNaN(xVal)) {
+                        let calcYVal = setupInfo.calcY(xVal);
+                        pendingTrainingPoints.push({x: xVal, y: calcYVal, ptLabel: ptLabel});
+                        addExtractedRowHTML(listContainer, xVal, xNameInput, setupInfo, null);
+                        validPoints++;
+                    }
+                }
+            });
+
+            if (currentMode === 'training' && validPoints < 2) return;
+            if (currentMode === 'simulator' && validPoints < 1) return;
+
+            document.getElementById('modal-main-title').innerText = currentMode === 'training' ? 'Data Transfer Process' : 'Simulation Configuration';
+            document.getElementById('modal-sub-title').innerText = currentMode === 'training' ? 'Data Normalization' : 'Environment Setup';
+            document.getElementById('modal-desc').innerText = currentMode === 'training' ? 'The system is compiling your independent (X) and dependent (Y) variables into numerical arrays required for the linear regression training algorithm...' : 'Please review and adjust the controlled variables (constants) for your virtual laboratory environment before running the simulation.';
+            document.getElementById('modal-action-btn').innerText = currentMode === 'training' ? 'Start Training' : 'Run Simulation';
+            document.getElementById('modal-complete-text').innerText = currentMode === 'training' ? 'Data transfer complete! Click to start training.' : 'Configuration complete! Click to run simulation.';
+
+            // Populate Editable Controlled Variables
+            const controlledContainer = document.getElementById('controlled-vars-list');
+            controlledContainer.innerHTML = '';
+            for (const [key, data] of Object.entries(expData)) {
+                if (key !== currentVar) {
+                    let inputHTML = '';
+                    let inputId = `id="ctrl-var-${key}"`;
+                    let onInputAttr = (key === 'concentration' || key === 'ph') ? `oninput="togglePhConc(this, '${key}')"` : '';
+
+                    if (data.inputType === 'surfaceSelect') {
+                        let options = '';
+                        for(let i=1; i<=20; i++) options += `<option value="${i}" ${i===data.defaultVal?'selected':''}>2cm³ metal in ${i} portion${i>1?'s':''}</option>`;
+                        inputHTML = `<select ${inputId} class="w-full text-[11px] p-1.5 border border-gray-200 rounded text-gray-700 outline-none focus:border-indigo-400 bg-white shadow-sm cursor-pointer">${options}</select>`;
+                    } else if (data.inputType === 'acid' || data.inputType === 'metal') {
+                        inputHTML = `<input type="text" ${inputId} class="w-full text-[11px] p-1.5 border border-gray-200 rounded text-gray-700 outline-none focus:border-indigo-400 bg-white shadow-sm" placeholder="${data.xPlaceholder}" value="${data.defaultVal}">`;
+                    } else {
+                        let startVal = (key === 'ph') ? '' : data.defaultVal;
+                        inputHTML = `
+                            <div class="flex shadow-sm rounded">
+                                <input type="number" ${inputId} step="any" ${onInputAttr} class="w-full text-[11px] p-1.5 border border-gray-200 border-r-0 rounded-l text-gray-700 outline-none focus:border-indigo-400 bg-white disabled:bg-gray-100 disabled:text-gray-400" placeholder="${data.xPlaceholder}" value="${startVal}">
+                                <span class="bg-gray-100 border border-gray-200 rounded-r px-2 py-1.5 text-[9px] text-gray-500 font-bold flex items-center justify-center">${data.unit}</span>
+                            </div>
+                        `;
+                    }
+
+                    controlledContainer.innerHTML += `
+                        <div class="flex flex-col bg-gray-50 p-2 rounded-lg border border-gray-100">
+                            <span class="text-gray-500 text-[9px] font-bold uppercase tracking-wider mb-1">${data.name}</span>
+                            ${inputHTML}
+                        </div>
+                    `;
+                }
+            }
+            
+            lockUIBackground(true);
+            document.getElementById('data-prep-modal').classList.remove('hidden');
+
+            const concInput = document.getElementById('ctrl-var-concentration');
+            if (concInput) togglePhConc(concInput, 'concentration');
+        }
+
+        function addExtractedRowHTML(container, xVal, xNameInput, setupInfo, yVal) {
+            let displayX = `${xVal} ${setupInfo.unit}`;
+            if(setupInfo.inputType === 'acid' || setupInfo.inputType === 'metal') {
+                const nameStr = xNameInput && xNameInput.value.trim() !== '' ? xNameInput.value.trim() : 'Unnamed';
+                displayX = `${nameStr} (${xVal} ${setupInfo.unit})`;
+            } else if(setupInfo.inputType === 'surfaceSelect') {
+                displayX = `${xVal} portion(s)`;
+            }
+
+            let yDisplay = yVal !== null ? `<span class="font-bold text-green-600">${yVal} cm³</span>` : `<span class="font-bold text-gray-400 italic">Pending...</span>`;
+
+            container.innerHTML += `
+                <div class="flex items-center justify-between bg-white p-2.5 rounded-lg border border-gray-100 text-sm shadow-sm">
+                    <div class="w-[45%] truncate"><span class="text-gray-400 text-xs mr-1">X:</span> <span class="font-bold text-gray-700">${displayX}</span></div>
+                    <div class="text-green-400 w-[10%] text-center font-bold">➔</div>
+                    <div class="w-[45%] text-right"><span class="text-gray-400 text-xs mr-1">Y:</span> ${yDisplay}</div>
+                </div>`;
+        }
+
+        function closeDataPrepModal() {
+            document.getElementById('data-prep-modal').classList.add('hidden');
+            lockUIBackground(false);
+        }
+
+        // 2. Start Model Training Animation Modal
+        let trainingAnimFrame;
+        function startActualTraining() {
+            document.getElementById('data-prep-modal').classList.add('hidden');
+            
+            document.getElementById('training-title').innerText = "Training Model...";
+            document.getElementById('training-spinner-container').className = "bg-indigo-100 text-indigo-600 p-2 rounded-full";
+            document.getElementById('training-spinner').innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>`;
+            document.getElementById('training-spinner').classList.add('animate-spin');
+            
+            document.getElementById('train-progress-bar').style.width = '0%';
+            document.getElementById('train-progress-text').innerText = '0%';
+            
+            const initialLoss = Math.random() * 0.5 + 0.6;
+            document.getElementById('train-loss').innerText = initialLoss.toFixed(4);
+            
+            document.getElementById('model-training-modal').classList.remove('hidden');
+
+            const duration = 3000;
+            const startTime = Date.now();
+
+            function animateTraining() {
+                const elapsed = Date.now() - startTime;
+                let progress = elapsed / duration;
+                if (progress > 1) progress = 1;
+
+                document.getElementById('train-progress-bar').style.width = `${Math.floor(progress * 100)}%`;
+                document.getElementById('train-progress-text').innerText = `${Math.floor(progress * 100)}%`;
+                
+                const currentLoss = initialLoss * Math.exp(-5 * progress);
+                document.getElementById('train-loss').innerText = currentLoss.toFixed(4);
+                
+                document.getElementById('train-elapsed').innerText = `${(progress * (duration/1000)).toFixed(1)}s`;
+                document.getElementById('train-remain').innerText = `${((1 - progress) * (duration/1000)).toFixed(1)}s`;
+
+                if (progress < 1) {
+                    trainingAnimFrame = requestAnimationFrame(animateTraining);
+                } else {
+                    document.getElementById('training-spinner').classList.remove('animate-spin');
+                    document.getElementById('training-spinner-container').className = "bg-green-100 text-green-600 p-2 rounded-full";
+                    document.getElementById('training-spinner').innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>`;
+                    document.getElementById('training-title').innerText = "Training Complete!";
+                    
+                    setTimeout(finishTraining, 600);
+                }
+            }
+            trainingAnimFrame = requestAnimationFrame(animateTraining);
+        }
+
+        // 3. Finish Training, Draw Graph, Unlock UI
+        function finishTraining() {
+            document.getElementById('model-training-modal').classList.add('hidden');
+            lockUIBackground(false);
+
+            document.getElementById('setup-overlay').classList.add('hidden');
+            document.getElementById('chart-placeholder').classList.add('hidden');
+            document.getElementById('resultsChart').classList.remove('hidden');
+
+            trainedModel = calculateLinearRegression(pendingTrainingPoints);
+            
+            const xValues = pendingTrainingPoints.map(p => p.x);
+            const padding = (Math.max(...xValues) - Math.min(...xValues)) * 0.1 || 1;
+            const lineData = [
+                { x: Math.min(...xValues) - padding, y: trainedModel.m * (Math.min(...xValues) - padding) + trainedModel.c },
+                { x: Math.max(...xValues) + padding, y: trainedModel.m * (Math.max(...xValues) + padding) + trainedModel.c }
+            ];
+
+            renderGraph(pendingTrainingPoints, lineData);
+            
+            document.getElementById('prediction-panel').classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+            document.getElementById('download-png-btn').classList.remove('hidden');
+            document.getElementById('run-btn-text').innerText = "Re-Train Model";
+        }
+
+        // --- SIMULATOR LOGIC ---
+        function runSimulator() {
+            let maxPredictedY = 0;
+            pendingTrainingPoints.forEach(p => {
+                if(p.y > maxPredictedY) maxPredictedY = p.y;
+            });
+
+            const progContainer = document.getElementById('progress-container');
+            const progBar = document.getElementById('progress-bar');
+            
+            lockUIBackground(true);
+            document.getElementById('run-btn-text').innerText = "Simulating Chemical Reaction...";
+            progContainer.classList.remove('hidden');
+            void progBar.offsetWidth;
+            progBar.style.width = '100%';
+            
+            document.getElementById('setup-overlay').classList.add('hidden');
+            document.getElementById('chart-placeholder').classList.add('hidden');
+            document.getElementById('download-png-btn').classList.add('hidden');
+            document.getElementById('resultsChart').classList.remove('hidden');
+
+            document.getElementById('lab-setup').classList.add('active-experiment');
+            setLabVolume(maxPredictedY);
+
+            setTimeout(() => {
+                document.getElementById('lab-setup').classList.remove('active-experiment');
+                
+                progBar.style.transition = 'none';
+                progBar.style.width = '0';
+                setTimeout(() => progBar.style.transition = 'width 2.5s linear', 50);
+                progContainer.classList.add('hidden');
+                
+                document.getElementById('run-btn-text').innerText = "Re-Simulate Data";
+                lockUIBackground(false);
+
+                let ptIndex = 0;
+                const yInputs = document.querySelectorAll('.y-input');
+                document.querySelectorAll('.x-input').forEach((input, index) => {
+                    if (!isNaN(parseFloat(input.value.trim()))) {
+                        yInputs[index].value = pendingTrainingPoints[ptIndex].y.toFixed(1);
+                        ptIndex++;
+                    }
+                });
+
+                pendingTrainingPoints.sort((a,b) => a.x - b.x);
+                renderGraph(pendingTrainingPoints, null);
+                document.getElementById('download-png-btn').classList.remove('hidden');
+                
+            }, 2500);
+        }
+
+        // --- VISUAL & PREDICTION LOGIC ---
+        function resetLabVisual() {
+            // 0 mark is at y=60
+            document.getElementById('gas-space').style.height = '20px';
+            document.getElementById('cylinder-water').setAttribute('y', 60);
+            document.getElementById('cylinder-water').style.height = '200px';
+        }
+
+        function setLabVolume(volumeY) {
+            let visualY = Math.min(100, volumeY);
+            let h = visualY * 2;
+            document.getElementById('gas-space').style.height = (20 + h) + 'px';
+            document.getElementById('cylinder-water').setAttribute('y', 60 + h);
+            document.getElementById('cylinder-water').style.height = (200 - h) + 'px';
+        }
+
+        function runPrediction() {
+            const inputEl = document.getElementById('predict-input');
+            if(!inputEl) return;
+            const inputVal = parseFloat(inputEl.value);
+            if (isNaN(inputVal)) { alert("Please enter a valid known input to make a prediction."); return; }
+
+            const btn = document.getElementById('predict-btn');
+            btn.disabled = true; btn.innerHTML = 'Predicting...';
+
+            let predictedY = (trainedModel.m * inputVal) + trainedModel.c;
+            if (predictedY < 0) predictedY = 0;
+
+            document.getElementById('lab-setup').classList.add('active-experiment');
+            setLabVolume(predictedY);
+
+            setTimeout(() => {
+                document.getElementById('lab-setup').classList.remove('active-experiment');
+                const resEl = document.getElementById('predict-result');
+                resEl.innerHTML = `${predictedY.toFixed(2)} <span class="text-sm font-bold text-green-200">cm³</span>`;
+                resEl.classList.add('scale-110'); setTimeout(() => resEl.classList.remove('scale-110'), 200);
+                
+                btn.disabled = false; btn.innerHTML = 'Predict Y';
+
+                // Determine Predicted Point Label
+                let predLabel = 'Predicted';
+                const nameInput = document.getElementById('predict-name-input');
+                if (nameInput && nameInput.value.trim() !== '') {
+                    predLabel = nameInput.value.trim();
+                }
+
+                // Add Red Dot to graph
+                if (chartInstance) {
+                    let pIndex = chartInstance.data.datasets.findIndex(ds => ds.label === 'Predicted Point');
+                    if (pIndex === -1) {
+                        chartInstance.data.datasets.push({
+                            type: 'scatter',
+                            label: 'Predicted Point',
+                            data: [{ x: inputVal, y: predictedY, ptLabel: predLabel }],
+                            backgroundColor: '#ef4444',
+                            borderColor: '#b91c1c',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#ef4444',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2,
+                            pointRadius: 8,
+                            pointHoverRadius: 10,
+                            showLine: false,
+                            order: 0
+                        });
+                    } else {
+                        chartInstance.data.datasets[pIndex].data = [{ x: inputVal, y: predictedY, ptLabel: predLabel }];
+                    }
+                    chartInstance.update();
+                }
+            }, 2000);
+        }
+
+        function renderGraph(scatterPoints, linePoints) {
+            const setupInfo = expData[currentVar];
+            const ctx = document.getElementById('resultsChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            const datasets = [{
+                type: currentMode === 'simulator' ? 'line' : 'scatter',
+                label: currentMode === 'simulator' ? 'Simulated Curve' : 'User Practical Data',
+                data: scatterPoints,
+                backgroundColor: currentMode === 'simulator' ? '#10b981' : '#6366f1',
+                borderColor: currentMode === 'simulator' ? '#10b981' : '#4f46e5',
+                borderWidth: currentMode === 'simulator' ? 3 : 0,
+                pointBackgroundColor: currentMode === 'simulator' ? '#10b981' : '#6366f1',
+                pointBorderColor: '#ffffff', pointBorderWidth: 2, pointRadius: 6, pointHoverRadius: 8, tension: 0.1
+            }];
+
+            if(linePoints) {
+                datasets.push({ type: 'line', label: 'Trained Regression Model', data: linePoints, borderColor: '#10b981', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false, tension: 0 });
+            }
+
+            chartInstance = new Chart(ctx, {
+                data: { datasets: datasets },
+                plugins: [customCanvasBackgroundColor, customPointLabels],
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: { duration: 1500, easing: 'easeOutQuint' },
+                    layout: { padding: { top: 20 } },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Volume of H₂ vs. ${setupInfo.name}`,
+                            color: '#334155',
+                            font: { size: 14, weight: 'bold', family: "'Segoe UI', system-ui, sans-serif" },
+                            padding: { top: 5, bottom: 15 }
+                        },
+                        legend: { display: false },
+                        customCanvasBackgroundColor: { color: 'white' },
+                        tooltip: { backgroundColor: 'rgba(30, 41, 59, 0.9)', titleColor: '#fff', bodyColor: '#fff', padding: 10,
+                            callbacks: {
+                                label: function(context) {
+                                    const pointData = context.raw;
+                                    const ptName = pointData.ptLabel ? ` (${pointData.ptLabel})` : '';
+                                    
+                                    if (context.dataset.label === 'Predicted Point') {
+                                        return ` Predicted${ptName}: X=${context.parsed.x}, Vol=${context.parsed.y.toFixed(1)} cm³`;
+                                    }
+                                    return context.dataset.type === 'scatter' ? ` Recorded${ptName}: X=${context.parsed.x}, Vol=${context.parsed.y.toFixed(1)} cm³` : ` Model: Vol=${context.parsed.y.toFixed(1)} cm³`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { type: 'linear', position: 'bottom', title: { display: true, text: `${setupInfo.name} (${setupInfo.unit})`, color: '#4b5563', font: {size:11, weight:'bold'} }, grid: { color: '#f3f4f6' },
+                            ticks: { callback: function(value) { return currentVar === 'surfaceArea' ? value + ' pts' : value; } }
+                        },
+                        y: { title: { display: true, text: 'Volume of H₂ (cm³)', color: '#047857', font: {size:11, weight:'bold'} }, grid: { color: '#f3f4f6' }, min: 0 }
+                    }
+                }
+            });
+        }
+        
+        function downloadGraph() {
+            const canvas = document.getElementById('resultsChart');
+            if(canvas) { const link = document.createElement('a'); link.download = `Acid-Metal-Graph-${currentVar}.png`; link.href = canvas.toDataURL('image/png'); link.click(); }
+        }
+
+        // --- QR CODE SHARING & SCANNING ---
+        function openQRModal() {
+            if(!currentVar) { alert("Please select a variable and input some data first."); return; }
+            const dataToEncode = { m: currentMode === 'training' ? 't' : 's', v: currentVar, d: [] };
+            document.querySelectorAll('.data-row').forEach(row => {
+                const xInput = row.querySelector('.x-input'), xName = row.querySelector('.x-name'), yInput = row.querySelector('.y-input');
+                let rowData = {};
+                if(xInput && xInput.value.trim() !== '') rowData.x = xInput.value.trim();
+                if(xName && xName.value.trim() !== '') rowData.xn = xName.value.trim();
+                if(yInput && yInput.value.trim() !== '') rowData.y = yInput.value.trim();
+                if(Object.keys(rowData).length > 0) dataToEncode.d.push(rowData);
+            });
+            document.getElementById('qr-modal').classList.remove('hidden');
+            const qrContainer = document.getElementById('qr-code-container');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, { text: JSON.stringify(dataToEncode), width: 200, height: 200, colorDark : "#1f2937", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.L });
+        }
+
+        function closeQRModal() { document.getElementById('qr-modal').classList.add('hidden'); }
+
+        function openScanModal() {
+            document.getElementById('scan-modal').classList.remove('hidden');
+            if(!html5QrcodeScanner) html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250}, aspectRatio: 1.0 }, false);
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        }
+
+        function closeScanModal() {
+            document.getElementById('scan-modal').classList.add('hidden');
+            if(html5QrcodeScanner) html5QrcodeScanner.clear().catch(e => console.error(e));
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            closeScanModal();
+            try {
+                const importedData = JSON.parse(decodedText);
+                if(importedData.m && importedData.v && importedData.d) applyImportedData(importedData);
+                else alert("QR Code does not contain valid Virtual Lab data.");
+            } catch(e) { alert("QR Code format is unrecognized."); }
+        }
+
+        function onScanFailure(error) { }
+
+        function applyImportedData(data) {
+            setMode(data.m === 't' ? 'training' : 'simulator');
+            const varMapping = ['concentration', 'ph', 'acidType', 'temperature', 'surfaceArea', 'metalType'];
+            const cardIndex = varMapping.indexOf(data.v);
+            if(cardIndex !== -1) selectVariable(data.v, document.querySelectorAll('.var-card')[cardIndex]);
+            else return;
+
+            document.getElementById('data-rows').innerHTML = '';
+            data.d.forEach(rowData => {
+                addDataRow();
+                const rows = document.querySelectorAll('.data-row'); const targetRow = rows[rows.length - 1];
+                const xInput = targetRow.querySelector('.x-input'), xName = targetRow.querySelector('.x-name'), yInput = targetRow.querySelector('.y-input');
+
+                if(xName && rowData.xn) { xName.value = rowData.xn; attemptAutoFill(xName, expData[data.v].inputType); }
+                else if (xInput && rowData.x) xInput.value = rowData.x;
+                if(yInput && rowData.y && data.m === 't') yInput.value = rowData.y;
+            });
+            checkInputs(); alert("✅ Lab Data Imported Successfully!");
+        }
+        
+        setMode('training');
+    </script>
+</body>
+</html>
